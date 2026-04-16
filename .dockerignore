@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.gitignore
+*.md
+docker-compose.yml
+Dockerfile
+docker-start.sh
+docker-stop.sh
+start.sh
+api-key-tool
+.DS_Store
+.env
+.env.*
