@@ -1,9 +1,37 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 /**
- * 查询令牌调用日志明细
- * 调用 NewAPI 的 /api/log/token 接口
+ * 查询令牌调用日志明细 v2.1
+ * 
+ * 尝试多种日志接口：
+ * 1. NewAPI/OneAPI: /api/log/token?key=xxx
+ * 2. NewAPI 备用: /api/log/self（部分版本）
+ * 
+ * 对于不支持日志查询的平台（如 aicodewith.com、apertis.ai 等），
+ * 返回明确的 "不支持" 提示而非报错。
  */
+
+const REQUEST_TIMEOUT = 10000
+
+async function fetchWithTimeout(url, options, timeout = REQUEST_TIMEOUT) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeout)
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal })
+    return response
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('请求超时')
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function POST(request) {
   try {
     const { baseUrl, apiKey } = await request.json()
@@ -16,35 +44,75 @@ export async function POST(request) {
     }
 
     let url = baseUrl.replace(/\/+$/, '')
-    // 这个接口不走 /v1 前缀
+    // 日志接口不走 /v1 前缀
     url = url.replace(/\/v1$/, '')
 
-    const res = await fetch(`${url}/api/log/token?key=${encodeURIComponent(apiKey)}`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!res.ok) {
-      const errText = await res.text()
-      return NextResponse.json(
-        { error: `查询日志失败: ${res.status} - ${errText}` },
-        { status: res.status }
-      )
+    const headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     }
 
-    const data = await res.json()
+    // 尝试 NewAPI /api/log/token
+    let data = null
+    let supported = false
 
-    if (!data.success) {
-      return NextResponse.json(
-        { error: data.message || '查询失败' },
-        { status: 400 }
+    try {
+      const res = await fetchWithTimeout(
+        `${url}/api/log/token?key=${encodeURIComponent(apiKey)}`,
+        { headers }
       )
+
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success !== false && (json.data || Array.isArray(json))) {
+          data = json
+          supported = true
+        }
+      } else if (res.status === 401 || res.status === 403) {
+        return NextResponse.json(
+          { error: 'API Key 无效或无权限查询日志' },
+          { status: res.status }
+        )
+      }
+      // 404/400/其他 → 平台不支持，不报错
+    } catch {
+      // 超时或网络错误，继续
+    }
+
+    // 如果第一个接口不支持，尝试 /api/log/self
+    if (!supported) {
+      try {
+        const res = await fetchWithTimeout(
+          `${url}/api/log/self`,
+          { headers }
+        )
+
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success !== false && (json.data || Array.isArray(json))) {
+            data = json
+            supported = true
+          }
+        }
+      } catch {
+        // 忽略
+      }
+    }
+
+    // 平台不支持日志查询
+    if (!supported) {
+      return NextResponse.json({
+        logs: [],
+        total: 0,
+        stats: null,
+        unsupported: true,
+        message: '该平台不支持调用日志查询（仅 NewAPI/OneAPI 兼容站支持此功能）',
+      })
     }
 
     // 格式化日志数据
-    const logs = (data.data || []).map((log) => ({
+    const rawLogs = data.data || data || []
+    const logs = (Array.isArray(rawLogs) ? rawLogs : []).map((log) => ({
       id: log.id,
       time: log.created_at
         ? new Date(log.created_at * 1000).toLocaleString('zh-CN')
@@ -57,7 +125,6 @@ export async function POST(request) {
       promptTokens: log.prompt_tokens || 0,
       completionTokens: log.completion_tokens || 0,
       quota: log.quota || 0,
-      // quota / 500000 = 美元
       cost: `$${(log.quota / 500000).toFixed(6)}`,
       content: log.content || '',
     }))
@@ -75,7 +142,6 @@ export async function POST(request) {
       modelStats[l.model].cost += l.quota
     })
 
-    // 转换 modelStats 的 cost 为美元
     Object.keys(modelStats).forEach((k) => {
       modelStats[k].costDisplay = `$${(modelStats[k].cost / 500000).toFixed(4)}`
     })

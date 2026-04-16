@@ -199,6 +199,7 @@ export default function ModelSelector({
           </p>
 
           {/* 常用 Claude 模型快捷选择 */}
+          <p className="text-xs text-gray-600">官方模型名:</p>
           <div className="flex flex-wrap gap-1.5">
             {[
               'claude-opus-4-20250514',
@@ -222,6 +223,34 @@ export default function ModelSelector({
               </button>
             ))}
           </div>
+          {/* 常见别名/短名 */}
+          <p className="text-xs text-gray-600 mt-2">常见别名（部分中转站使用）:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              'claude-4-opus',
+              'claude-4-sonnet',
+              'claude-4.5-sonnet',
+              'claude-3.7-sonnet',
+              'claude-3.5-sonnet',
+              'claude-3.5-haiku',
+            ].map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onModelChange(m)}
+                className={`px-2 py-1 text-xs rounded-md border transition-all ${
+                  selectedModel === m
+                    ? 'bg-purple-600/20 border-purple-500 text-purple-400'
+                    : 'bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-500'
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-600 mt-2">
+            注意：部分平台（如 aicodewith.com）区分 CLI 和 API 端点，请使用对应端点的模型名
+          </p>
         </div>
       )}
     </div>

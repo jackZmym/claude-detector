@@ -137,6 +137,10 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok) {
         setDetectError(data.error || '检测请求失败')
+        // 如果返回了可用模型建议，自动选中第一个
+        if (data.modelNotFound && data.suggestions?.length > 0) {
+          setModel(data.suggestions[0])
+        }
         setDetecting(false)
         return
       }
@@ -212,13 +216,11 @@ export default function Home() {
 
   const queryLogs = useCallback(async () => {
     const keyCheck = validateApiKey(apiKey)
-    if (!baseUrl || !keyCheck.valid) {
-      setBalanceError(!baseUrl ? '请填写 Base URL' : keyCheck.message)
-      return
-    }
+    if (!baseUrl || !keyCheck.valid) return
 
     setLogsLoading(true)
-    setBalanceError('')
+    setLogsData(null)
+    setLogsStats(null)
 
     try {
       const res = await fetch('/api/logs', {
@@ -228,13 +230,20 @@ export default function Home() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setBalanceError(data.error || '查询失败')
+        // 日志查询失败不阻断额度显示，静默处理
+        console.warn('日志查询失败:', data.error)
+        return
+      }
+      // 处理平台不支持日志的情况
+      if (data.unsupported) {
+        setLogsData([])
+        setLogsStats({ unsupported: true, message: data.message })
         return
       }
       setLogsData(data.logs)
       setLogsStats(data.stats)
     } catch (err) {
-      setBalanceError(`请求失败: ${err.message}`)
+      console.warn('日志查询异常:', err.message)
     } finally {
       setLogsLoading(false)
     }
@@ -559,7 +568,18 @@ export default function Home() {
               />
             )}
 
-            {logsData && (
+            {logsStats?.unsupported && (
+              <div className="glass-card p-6 fade-in">
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {logsStats.message || '该平台不支持调用日志查询'}
+                </div>
+              </div>
+            )}
+
+            {logsData && logsData.length > 0 && !logsStats?.unsupported && (
               <LogsTable logs={logsData} stats={logsStats} />
             )}
 
