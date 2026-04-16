@@ -19,7 +19,12 @@ export async function POST(request) {
     // 这个接口不走 /v1 前缀
     url = url.replace(/\/v1$/, '')
 
-    const res = await fetch(`${url}/api/log/token?key=${encodeURIComponent(apiKey)}`)
+    const res = await fetch(`${url}/api/log/token?key=${encodeURIComponent(apiKey)}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    })
 
     if (!res.ok) {
       const errText = await res.text()
