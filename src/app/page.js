@@ -7,7 +7,7 @@ import ModelSelector from '../components/ModelSelector'
 import ProgressBar from '../components/ProgressBar'
 import BalanceCard from '../components/BalanceCard'
 import LogsTable from '../components/LogsTable'
-import { allTests, calculateOverallScore } from '../lib/detection-tests'
+import { allTests, calculateOverallScore } from '../lib/detection'
 import { maskApiKey, validateApiKey, SECURITY_CONFIG } from '../lib/security'
 
 export default function Home() {
