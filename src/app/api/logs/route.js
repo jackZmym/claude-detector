@@ -115,7 +115,7 @@ export async function POST(request) {
     const logs = (Array.isArray(rawLogs) ? rawLogs : []).map((log) => ({
       id: log.id,
       time: log.created_at
-        ? new Date(log.created_at * 1000).toLocaleString('zh-CN')
+        ? new Date(log.created_at * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
         : '',
       timestamp: log.created_at || 0,
       tokenName: log.token_name || '',

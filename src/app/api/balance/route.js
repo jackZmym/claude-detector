@@ -103,8 +103,8 @@ async function tryApertisBilling(baseUrl, apiKey) {
         cycleQuotaLimit: sub.cycle_quota_limit,
         cycleQuotaUsed: sub.cycle_quota_used,
         cycleQuotaRemaining: sub.cycle_quota_remaining,
-        cycleStart: sub.cycle_start ? new Date(sub.cycle_start).toLocaleString('zh-CN') : '未知',
-        cycleEnd: cycleEnd ? cycleEnd.toLocaleString('zh-CN') : '未知',
+        cycleStart: sub.cycle_start ? new Date(sub.cycle_start).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '未知',
+        cycleEnd: cycleEnd ? cycleEnd.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '未知',
         quotaPercent: sub.cycle_quota_limit > 0
           ? Math.min(100, (sub.cycle_quota_used / sub.cycle_quota_limit) * 100)
           : 0,
@@ -112,7 +112,7 @@ async function tryApertisBilling(baseUrl, apiKey) {
         paygSpentUsd: sub.payg_spent_usd,
         paygLimitUsd: sub.payg_limit_usd,
       }
-      result.accessUntil = cycleEnd ? cycleEnd.toLocaleString('zh-CN') : '未知'
+      result.accessUntil = cycleEnd ? cycleEnd.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '未知'
     }
 
     // 月度限额（如果有）
@@ -185,7 +185,7 @@ async function tryStandardBilling(baseUrl, apiKey) {
       const remaining = isUnlimited ? Infinity : Math.max(0, hardLimit - totalUsed)
 
       const accessUntil = subData.access_until
-        ? new Date(subData.access_until * 1000).toLocaleString('zh-CN')
+        ? new Date(subData.access_until * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
         : '未知'
 
       return {
